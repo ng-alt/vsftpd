@@ -1,4 +1,20 @@
 /*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+/*
  * Part of Very Secure FTPd
  * Licence: GPL v2
  * Author: Chris Evans
@@ -35,13 +51,9 @@
 #include <sys/param.h>
 #include <sys/uio.h>
 
-#include <sys/prctl.h>
-#include <signal.h>
-
 /* Configuration.. here are the possibilities */
 #undef VSF_SYSDEP_HAVE_CAPABILITIES
 #undef VSF_SYSDEP_HAVE_SETKEEPCAPS
-#undef VSF_SYSDEP_HAVE_SETPDEATHSIG
 #undef VSF_SYSDEP_HAVE_LINUX_SENDFILE
 #undef VSF_SYSDEP_HAVE_FREEBSD_SENDFILE
 #undef VSF_SYSDEP_HAVE_HPUX_SENDFILE
@@ -51,38 +63,18 @@
 #undef VSF_SYSDEP_HAVE_HPUX_SETPROCTITLE
 #undef VSF_SYSDEP_HAVE_MAP_ANON
 #undef VSF_SYSDEP_NEED_OLD_FD_PASSING
-#undef VSF_SYSDEP_HAVE_LINUX_CLONE
 #ifdef VSF_BUILD_PAM
   #define VSF_SYSDEP_HAVE_PAM
 #endif
-#define VSF_SYSDEP_HAVE_SHADOW
-#define VSF_SYSDEP_HAVE_USERSHELL
-#define VSF_SYSDEP_HAVE_LIBCAP
-#define VSF_SYSDEP_HAVE_UTMPX
+//#define VSF_SYSDEP_HAVE_SHADOW	// Jiahao
+//#define VSF_SYSDEP_HAVE_USERSHELL	// Jiahao
+//#define VSF_SYSDEP_HAVE_LIBCAP	// Jiahao
+//#define VSF_SYSDEP_HAVE_UTMPX		// Jiahao
 
 #define __USE_GNU
-#include <utmpx.h>
+//#include <utmpx.h>			// Jiahao
 
 /* BEGIN config */
-#if defined(__linux__)
-  #include <errno.h>
-  #include <syscall.h>
-  #define VSF_SYSDEP_HAVE_LINUX_CLONE
-  #include <sched.h>
-  #ifndef CLONE_NEWPID
-    #define CLONE_NEWPID 0x20000000
-  #endif
-  #ifndef CLONE_NEWIPC
-    #define CLONE_NEWIPC 0x08000000
-  #endif
-  #ifndef CLONE_NEWNET
-    #define CLONE_NEWNET 0x40000000
-  #endif
-  #include <linux/unistd.h>
-  #include <errno.h>
-  #include <syscall.h>
-#endif
-
 #if defined(__linux__) && !defined(__ia64__) && !defined(__s390__)
   #define VSF_SYSDEP_TRY_LINUX_SETPROCTITLE_HACK
   #include <linux/version.h>
@@ -90,11 +82,9 @@
     #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,2,0))
       #define VSF_SYSDEP_HAVE_CAPABILITIES
       #define VSF_SYSDEP_HAVE_LINUX_SENDFILE
+      #include <sys/prctl.h>
       #ifdef PR_SET_KEEPCAPS
         #define VSF_SYSDEP_HAVE_SETKEEPCAPS
-      #endif
-      #ifdef PR_SET_PDEATHSIG
-        #define VSF_SYSDEP_HAVE_SETPDEATHSIG
       #endif
     #endif
   #endif
@@ -171,10 +161,10 @@
 /* No PAM? Try getspnam() with a getpwnam() fallback */
 #ifndef VSF_SYSDEP_HAVE_PAM
 /* This may hit our own "dummy" include and undef VSF_SYSDEP_HAVE_SHADOW */
-#include <shadow.h>
+//#include <shadow.h>	// Jiahao
 #include <pwd.h>
 #include <unistd.h>
-#include <crypt.h>
+//#include <crypt.h>	// Jiahao
 #endif
 
 /* Prefer libcap based capabilities over raw syscall capabilities */
@@ -185,10 +175,7 @@
 #include <linux/capability.h>
 #include <errno.h>
 #include <syscall.h>
-int capset(cap_user_header_t header, const cap_user_data_t data)
-{
-  return syscall(__NR_capset, header, data);
-}
+//_syscall2(int, capset, cap_user_header_t, header, const cap_user_data_t, data)
 /* Gross HACK to avoid warnings - linux headers overlap glibc headers */
 #undef __NFDBITS
 #undef __FDMASK
@@ -230,26 +217,27 @@ static int do_sendfile(const int out_fd, const int in_fd,
                        unsigned int num_send, filesize_t start_pos);
 static void vsf_sysutil_setproctitle_internal(const char* p_text);
 static struct mystr s_proctitle_prefix_str;
-
-/* These two aren't static to avoid OpenBSD build warnings. */
-void vsf_insert_uwtmp(const struct mystr* p_user_str,
-                      const struct mystr* p_host_str);
-void vsf_remove_uwtmp(void);
-
+/*
+static void vsf_insert_uwtmp(const struct mystr* p_user_str,
+                             const struct mystr* p_host_str);
+static void vsf_remove_uwtmp(void);
+*/
 #ifndef VSF_SYSDEP_HAVE_PAM
-int
-vsf_sysdep_check_auth(struct mystr* p_user_str,
+int	// Jiahao
+vsf_sysdep_check_auth(const struct mystr* p_user_str,
                       const struct mystr* p_pass_str,
                       const struct mystr* p_remote_host)
 {
-  const char* p_crypted;
-  const struct passwd* p_pwd = getpwnam(str_getbuf(p_user_str));
+//  const char* p_crypted;
+//  const struct passwd* p_pwd = getpwnam(str_getbuf(p_user_str));
+  const struct passwd* p_pwd = (struct passwd*)vsf_sysutil_getpwnam(str_getbuf(p_user_str));
   (void) p_remote_host;
   if (p_pwd == NULL)
   {
     return 0;
   }
-  #ifdef VSF_SYSDEP_HAVE_USERSHELL
+//  #ifdef VSF_SYSDEP_HAVE_USERSHELL
+/*
   if (tunable_check_shell)
   {
     const char* p_shell;
@@ -266,14 +254,18 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
       return 0;
     }
   }
-  #endif
-  #ifdef VSF_SYSDEP_HAVE_SHADOW
+*/
+//  #endif
+//  #ifdef VSF_SYSDEP_HAVE_SHADOW
+/*
   {
     const struct spwd* p_spwd = getspnam(str_getbuf(p_user_str));
     if (p_spwd != NULL)
     {
-      long curr_time = vsf_sysutil_get_time_sec();
+      long curr_time;
       int days;
+      vsf_sysutil_update_cached_time();
+      curr_time = vsf_sysutil_get_cached_time_sec();
       days = curr_time / (60 * 60 * 24);
       if (p_spwd->sp_expire > 0 && p_spwd->sp_expire < days)
       {
@@ -291,9 +283,11 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
       }
     }
   }
-  #endif /* VSF_SYSDEP_HAVE_SHADOW */
-  p_crypted = crypt(str_getbuf(p_pass_str), p_pwd->pw_passwd);
-  if (!vsf_sysutil_strcmp(p_crypted, p_pwd->pw_passwd))
+*/
+//  #endif /* VSF_SYSDEP_HAVE_SHADOW */	
+//  p_crypted = crypt(str_getbuf(p_pass_str), p_pwd->pw_passwd);
+//  if (!vsf_sysutil_strcmp(p_crypted, p_pwd->pw_passwd))
+  if (!vsf_sysutil_strcmp(str_getbuf(p_pass_str), p_pwd->pw_passwd))
   {
     return 1;
   }
@@ -302,15 +296,6 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
 
 #else /* VSF_SYSDEP_HAVE_PAM */
 
-#if (defined(__sun) || defined(__hpux)) && \
-    !defined(LINUX_PAM) && !defined(_OPENPAM)
-/* Sun's PAM doesn't use const here, while Linux-PAM and OpenPAM do */
-#define lo_const
-#else
-#define lo_const const
-#endif
-typedef lo_const void* pam_item_t;
-
 static pam_handle_t* s_pamh;
 static struct mystr s_pword_str;
 static int pam_conv_func(int nmsg, const struct pam_message** p_msg,
@@ -318,13 +303,11 @@ static int pam_conv_func(int nmsg, const struct pam_message** p_msg,
 static void vsf_auth_shutdown(void);
 
 int
-vsf_sysdep_check_auth(struct mystr* p_user_str,
+vsf_sysdep_check_auth(const struct mystr* p_user_str,
                       const struct mystr* p_pass_str,
                       const struct mystr* p_remote_host)
 {
-  int retval = -1;
-  pam_item_t item;
-  const char* pam_user_name = 0;
+  int retval;
   struct pam_conv the_conv =
   {
     &pam_conv_func,
@@ -335,11 +318,8 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
     bug("vsf_sysdep_check_auth");
   }
   str_copy(&s_pword_str, p_pass_str);
-  if (tunable_pam_service_name)
-  {
-    retval = pam_start(tunable_pam_service_name,
-                       str_getbuf(p_user_str), &the_conv, &s_pamh);
-  }
+  retval = pam_start(tunable_pam_service_name,
+                     str_getbuf(p_user_str), &the_conv, &s_pamh);
   if (retval != PAM_SUCCESS)
   {
     s_pamh = 0;
@@ -349,25 +329,7 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
   retval = pam_set_item(s_pamh, PAM_RHOST, str_getbuf(p_remote_host));
   if (retval != PAM_SUCCESS)
   {
-    (void) pam_end(s_pamh, retval);
-    s_pamh = 0;
-    return 0;
-  }
-#endif
-#ifdef PAM_TTY
-  retval = pam_set_item(s_pamh, PAM_TTY, "ftp");
-  if (retval != PAM_SUCCESS)
-  {
-    (void) pam_end(s_pamh, retval);
-    s_pamh = 0;
-    return 0;
-  }
-#endif
-#ifdef PAM_RUSER
-  retval = pam_set_item(s_pamh, PAM_RUSER, str_getbuf(p_user_str));
-  if (retval != PAM_SUCCESS)
-  {
-    (void) pam_end(s_pamh, retval);
+    (void) pam_end(s_pamh, 0);
     s_pamh = 0;
     return 0;
   }
@@ -375,39 +337,28 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
   retval = pam_authenticate(s_pamh, 0);
   if (retval != PAM_SUCCESS)
   {
-    (void) pam_end(s_pamh, retval);
+    (void) pam_end(s_pamh, 0);
     s_pamh = 0;
     return 0;
   }
-#ifdef PAM_USER
-  retval = pam_get_item(s_pamh, PAM_USER, &item);
-  if (retval != PAM_SUCCESS)
-  {
-    (void) pam_end(s_pamh, retval);
-    s_pamh = 0;
-    return 0;
-  }
-  pam_user_name = item;
-  str_alloc_text(p_user_str, pam_user_name);
-#endif
   retval = pam_acct_mgmt(s_pamh, 0);
   if (retval != PAM_SUCCESS)
   {
-    (void) pam_end(s_pamh, retval);
+    (void) pam_end(s_pamh, 0);
     s_pamh = 0;
     return 0;
   }
   retval = pam_setcred(s_pamh, PAM_ESTABLISH_CRED);
   if (retval != PAM_SUCCESS)
   {
-    (void) pam_end(s_pamh, retval);
+    (void) pam_end(s_pamh, 0);
     s_pamh = 0;
     return 0;
   }
   if (!tunable_session_support)
   {
     /* You're in already! */
-    (void) pam_end(s_pamh, retval);
+    (void) pam_end(s_pamh, 0);
     s_pamh = 0;
     return 1;
   }
@@ -418,7 +369,7 @@ vsf_sysdep_check_auth(struct mystr* p_user_str,
   {
     vsf_remove_uwtmp();
     (void) pam_setcred(s_pamh, PAM_DELETE_CRED);
-    (void) pam_end(s_pamh, retval);
+    (void) pam_end(s_pamh, 0);
     s_pamh = 0;
     return 0;
   }
@@ -439,7 +390,7 @@ vsf_auth_shutdown(void)
   }
   (void) pam_close_session(s_pamh, 0);
   (void) pam_setcred(s_pamh, PAM_DELETE_CRED);
-  (void) pam_end(s_pamh, PAM_SUCCESS);
+  (void) pam_end(s_pamh, 0);
   s_pamh = 0;
   vsf_remove_uwtmp();
 }
@@ -697,7 +648,6 @@ static int do_sendfile(const int out_fd, const int in_fd,
   int retval;
   enum EVSFSysUtilError error;
   (void) start_pos;
-  (void) error;
 #if defined(VSF_SYSDEP_HAVE_LINUX_SENDFILE) || \
     defined(VSF_SYSDEP_HAVE_FREEBSD_SENDFILE) || \
     defined(VSF_SYSDEP_HAVE_HPUX_SENDFILE) || \
@@ -1159,8 +1109,8 @@ vsf_sysutil_recv_fd(int sock_fd)
 #endif /* !VSF_SYSDEP_NEED_OLD_FD_PASSING */
 
 #ifndef VSF_SYSDEP_HAVE_UTMPX
-
-void
+/*
+static void
 vsf_insert_uwtmp(const struct mystr* p_user_str,
                  const struct mystr* p_host_str)
 {
@@ -1168,19 +1118,20 @@ vsf_insert_uwtmp(const struct mystr* p_user_str,
   (void) p_host_str;
 }
 
-void
+static void
 vsf_remove_uwtmp(void)
 {
 }
-
+*/
 #else /* !VSF_SYSDEP_HAVE_UTMPX */
 
 /* IMHO, the pam_unix module REALLY should be doing this in its SM component */
 /* Statics */
+
 static int s_uwtmp_inserted;
 static struct utmpx s_utent;
 
-void
+static void
 vsf_insert_uwtmp(const struct mystr* p_user_str,
                  const struct mystr* p_host_str)
 {
@@ -1212,14 +1163,15 @@ vsf_insert_uwtmp(const struct mystr* p_user_str,
                      sizeof(s_utent.ut_user));
   vsf_sysutil_strcpy(s_utent.ut_host, str_getbuf(p_host_str),
                      sizeof(s_utent.ut_host));
-  s_utent.ut_tv.tv_sec = vsf_sysutil_get_time_sec();
+  vsf_sysutil_update_cached_time();
+  s_utent.ut_tv.tv_sec = vsf_sysutil_get_cached_time_sec();
   setutxent();
   (void) pututxline(&s_utent);
   endutxent();
   updwtmpx(WTMPX_FILE, &s_utent);
 }
 
-void
+static void
 vsf_remove_uwtmp(void)
 {
   if (!s_uwtmp_inserted)
@@ -1234,111 +1186,9 @@ vsf_remove_uwtmp(void)
   setutxent();
   (void) pututxline(&s_utent);
   endutxent();
-  s_utent.ut_tv.tv_sec = vsf_sysutil_get_time_sec();
+  vsf_sysutil_update_cached_time();
+  s_utent.ut_tv.tv_sec = vsf_sysutil_get_cached_time_sec();
   updwtmpx(WTMPX_FILE, &s_utent);
 }
-
 #endif /* !VSF_SYSDEP_HAVE_UTMPX */
 
-void
-vsf_set_die_if_parent_dies()
-{
-#ifdef VSF_SYSDEP_HAVE_SETPDEATHSIG
-  if (prctl(PR_SET_PDEATHSIG, SIGKILL, 0, 0, 0) != 0)
-  {
-    die("prctl");
-  }
-#endif
-}
-
-void
-vsf_set_term_if_parent_dies()
-{
-#ifdef VSF_SYSDEP_HAVE_SETPDEATHSIG
-  if (prctl(PR_SET_PDEATHSIG, SIGTERM, 0, 0, 0) != 0)
-  {
-    die("prctl");
-  }
-#endif
-}
-
-int
-vsf_sysutil_fork_isolate_all_failok()
-{
-#ifdef VSF_SYSDEP_HAVE_LINUX_CLONE
-  static int cloneflags_work = 1;
-  if (cloneflags_work)
-  {
-    int ret = syscall(__NR_clone,
-                      CLONE_NEWPID | CLONE_NEWIPC | CLONE_NEWNET | SIGCHLD,
-                      NULL);
-    if (ret != -1 || (errno != EINVAL && errno != EPERM))
-    {
-      if (ret == 0)
-      {
-        vsf_sysutil_post_fork();
-      }
-      return ret;
-    }
-    cloneflags_work = 0;
-  }
-#endif
-  return vsf_sysutil_fork_isolate_failok();
-}
-
-int
-vsf_sysutil_fork_isolate_failok()
-{
-#ifdef VSF_SYSDEP_HAVE_LINUX_CLONE
-  static int cloneflags_work = 1;
-  if (cloneflags_work)
-  {
-    int ret = syscall(__NR_clone, CLONE_NEWPID | CLONE_NEWIPC | SIGCHLD, NULL);
-    if (ret != -1 || (errno != EINVAL && errno != EPERM))
-    {
-      if (ret == 0)
-      {
-        vsf_sysutil_post_fork();
-      }
-      return ret;
-    }
-    cloneflags_work = 0;
-  }
-#endif
-  return vsf_sysutil_fork_failok();
-}
-
-int
-vsf_sysutil_fork_newnet()
-{
-#ifdef VSF_SYSDEP_HAVE_LINUX_CLONE
-  static int cloneflags_work = 1;
-  if (cloneflags_work)
-  {
-    int ret = syscall(__NR_clone, CLONE_NEWNET | SIGCHLD, NULL);
-    if (ret != -1 || (errno != EINVAL && errno != EPERM))
-    {
-      if (ret == 0)
-      {
-        vsf_sysutil_post_fork();
-      }
-      return ret;
-    }
-    cloneflags_work = 0;
-  }
-#endif
-  return vsf_sysutil_fork();
-}
-
-int
-vsf_sysutil_getpid_nocache(void)
-{
-#ifdef VSF_SYSDEP_HAVE_LINUX_CLONE
-  /* Need to defeat the glibc pid caching because we need to hit a raw
-   * sys_clone() above.
-   */
-  return syscall(__NR_getpid);
-#else
-  return getpid();
-#endif
-}

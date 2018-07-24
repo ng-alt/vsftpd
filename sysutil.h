@@ -1,5 +1,27 @@
+/*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
 #ifndef VSF_SYSUTIL_H
 #define VSF_SYSUTIL_H
+
+#include "shared.h"
+
+// 2007.05 James {
+#define DENIED_DIR "...DENIED_DIR"
+// 2007.05 James }
 
 /* TODO: these functions need proper documenting! */
 
@@ -16,9 +38,7 @@ enum EVSFSysUtilError
   kVSFSysUtilErrNOSYS,
   kVSFSysUtilErrINTR,
   kVSFSysUtilErrINVAL,
-  kVSFSysUtilErrOPNOTSUPP,
-  kVSFSysUtilErrACCES,
-  kVSFSysUtilErrNOENT
+  kVSFSysUtilErrOPNOTSUPP
 };
 enum EVSFSysUtilError vsf_sysutil_get_error(void);
 
@@ -43,9 +63,7 @@ typedef void (*vsf_context_io_t)(int, int, void*);
 
 void vsf_sysutil_install_null_sighandler(const enum EVSFSysUtilSignal sig);
 void vsf_sysutil_install_sighandler(const enum EVSFSysUtilSignal,
-                                    vsf_sighandle_t handler,
-                                    void* p_private,
-                                    int use_alarm);
+                                    vsf_sighandle_t handler, void* p_private);
 void vsf_sysutil_install_async_sighandler(const enum EVSFSysUtilSignal sig,
                                           vsf_async_sighandle_t handler);
 void vsf_sysutil_default_sig(const enum EVSFSysUtilSignal sig);
@@ -70,7 +88,7 @@ int vsf_sysutil_rename(const char* p_from, const char* p_to);
 struct vsf_sysutil_dir;
 struct vsf_sysutil_dir* vsf_sysutil_opendir(const char* p_dirname);
 void vsf_sysutil_closedir(struct vsf_sysutil_dir* p_dir);
-const char* vsf_sysutil_next_dirent(struct vsf_sysutil_dir* p_dir);
+const char* vsf_sysutil_next_dirent(const char* session_user, const char *base_dir, struct vsf_sysutil_dir* p_dir);
 
 /* File create/open/close etc. */
 enum EVSFSysUtilOpenMode
@@ -82,10 +100,11 @@ enum EVSFSysUtilOpenMode
 int vsf_sysutil_open_file(const char* p_filename,
                           const enum EVSFSysUtilOpenMode);
 /* Fails if file already exists */
-int vsf_sysutil_create_file_exclusive(const char* p_filename);
+int vsf_sysutil_create_file(const char* p_filename);
+/* Overwrites if file already exists */
+int vsf_sysutil_create_overwrite_file(const char* p_filename);
 /* Creates file or appends if already exists */
-int vsf_sysutil_create_or_open_file_append(const char* p_filename,
-                                           unsigned int mode);
+int vsf_sysutil_create_append_file(const char* p_filename);
 /* Creates or appends */
 int vsf_sysutil_create_or_open_file(const char* p_filename, unsigned int mode);
 void vsf_sysutil_dupfd2(int old_fd, int new_fd);
@@ -93,11 +112,9 @@ void vsf_sysutil_close(int fd);
 int vsf_sysutil_close_failok(int fd);
 int vsf_sysutil_unlink(const char* p_dead);
 int vsf_sysutil_write_access(const char* p_filename);
-void vsf_sysutil_ftruncate(int fd);
 
 /* Reading and writing */
 void vsf_sysutil_lseek_to(const int fd, filesize_t seek_pos);
-void vsf_sysutil_lseek_end(const int fd);
 filesize_t vsf_sysutil_get_file_offset(const int file_fd);
 int vsf_sysutil_read(const int fd, void* p_buf, const unsigned int size);
 int vsf_sysutil_write(const int fd, const void* p_buf,
@@ -123,7 +140,7 @@ filesize_t vsf_sysutil_statbuf_get_size(
 const char* vsf_sysutil_statbuf_get_perms(
   const struct vsf_sysutil_statbuf* p_stat);
 const char* vsf_sysutil_statbuf_get_date(
-  const struct vsf_sysutil_statbuf* p_stat, int use_localtime, long curr_time);
+  const struct vsf_sysutil_statbuf* p_stat, int use_localtime);
 const char* vsf_sysutil_statbuf_get_numeric_date(
   const struct vsf_sysutil_statbuf* p_stat, int use_localtime);
 unsigned int vsf_sysutil_statbuf_get_links(
@@ -165,7 +182,6 @@ void vsf_sysutil_free(void* p_ptr);
 
 /* Process creation/exit/process handling */
 unsigned int vsf_sysutil_getpid(void);
-void vsf_sysutil_post_fork(void);
 int vsf_sysutil_fork(void);
 int vsf_sysutil_fork_failok(void);
 void vsf_sysutil_exit(int exit_code);
@@ -229,8 +245,6 @@ void vsf_sysutil_sockaddr_set_ipv4addr(struct vsf_sysutil_sockaddr* p_sockptr,
 void vsf_sysutil_sockaddr_set_ipv6addr(struct vsf_sysutil_sockaddr* p_sockptr,
                                        const unsigned char* p_raw);
 void vsf_sysutil_sockaddr_set_any(struct vsf_sysutil_sockaddr* p_sockaddr);
-unsigned short vsf_sysutil_sockaddr_get_port(
-    const struct vsf_sysutil_sockaddr* p_sockptr);
 void vsf_sysutil_sockaddr_set_port(struct vsf_sysutil_sockaddr* p_sockptr,
                                    unsigned short the_port);
 int vsf_sysutil_is_port_reserved(unsigned short port);
@@ -247,7 +261,7 @@ int vsf_sysutil_get_ipv6_sock(void);
 struct vsf_sysutil_socketpair_retval
   vsf_sysutil_unix_stream_socketpair(void);
 int vsf_sysutil_bind(int fd, const struct vsf_sysutil_sockaddr* p_sockptr);
-int vsf_sysutil_listen(int fd, const unsigned int backlog);
+void vsf_sysutil_listen(int fd, const unsigned int backlog);
 void vsf_sysutil_getsockname(int fd, struct vsf_sysutil_sockaddr** p_sockptr);
 void vsf_sysutil_getpeername(int fd, struct vsf_sysutil_sockaddr** p_sockptr);
 int vsf_sysutil_accept_timeout(int fd, struct vsf_sysutil_sockaddr* p_sockaddr,
@@ -262,6 +276,11 @@ void vsf_sysutil_activate_keepalive(int fd);
 void vsf_sysutil_set_iptos_throughput(int fd);
 void vsf_sysutil_activate_reuseaddr(int fd);
 void vsf_sysutil_set_nodelay(int fd);
+#ifdef RTCONFIG_SHP
+void vsf_sysutil_set_lfp(int fd);
+#else
+#define vsf_sysutil_set_lfp(fd) do {} while (0)
+#endif
 void vsf_sysutil_activate_sigurg(int fd);
 void vsf_sysutil_activate_oobinline(int fd);
 void vsf_sysutil_activate_linger(int fd);
@@ -301,7 +320,6 @@ unsigned char vsf_sysutil_get_random_byte(void);
 unsigned int vsf_sysutil_get_umask(void);
 void vsf_sysutil_set_umask(unsigned int umask);
 void vsf_sysutil_make_session_leader(void);
-void vsf_sysutil_reopen_standard_fds(void);
 void vsf_sysutil_tzset(void);
 const char* vsf_sysutil_get_current_date(void);
 void vsf_sysutil_qsort(void* p_base, unsigned int num_elem,
@@ -310,12 +328,10 @@ void vsf_sysutil_qsort(void* p_base, unsigned int num_elem,
 char* vsf_sysutil_getenv(const char* p_var);
 typedef void (*exitfunc_t)(void);
 void vsf_sysutil_set_exit_func(exitfunc_t exitfunc);
-int vsf_sysutil_getuid(void);
 
 /* Syslogging (bah) */
-void vsf_sysutil_openlog(int force);
+void vsf_sysutil_openlog(void);
 void vsf_sysutil_syslog(const char* p_text, int severe);
-void vsf_sysutil_closelog(void);
 
 /* Credentials handling */
 int vsf_sysutil_running_as_root(void);
@@ -334,19 +350,14 @@ void vsf_sysutil_initgroups(const struct vsf_sysutil_user* p_user);
 void vsf_sysutil_chroot(const char* p_root_path);
 
 /* Time handling */
-/* Do not call get_time_usec() without calling get_time_sec()
- * first otherwise you will get stale data.
- */
-long vsf_sysutil_get_time_sec(void);
-long vsf_sysutil_get_time_usec(void);
+void vsf_sysutil_update_cached_time(void);
+long vsf_sysutil_get_cached_time_sec(void);
+long vsf_sysutil_get_cached_time_usec(void);
 long vsf_sysutil_parse_time(const char* p_text);
 void vsf_sysutil_sleep(double seconds);
 int vsf_sysutil_setmodtime(const char* p_file, long the_time, int is_localtime);
 
-/* Limits */
-void vsf_sysutil_set_address_space_limit(unsigned long bytes);
-void vsf_sysutil_set_no_fds(void);
-void vsf_sysutil_set_no_procs(void);
+int test_user(char *target, char *pattern);	// Jiahao
 
 #endif /* VSF_SYSUTIL_H */
 

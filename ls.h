@@ -1,3 +1,19 @@
+/*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
 #ifndef VSF_LS_H
 #define VSF_LS_H
 
@@ -19,7 +35,8 @@ struct vsf_sysutil_dir;
  * p_filter_str   - the filter string given to LIST/NLST - e.g. "*.mp3"
  * is_verbose     - set to 1 for LIST, 0 for NLST
  */
-void vsf_ls_populate_dir_list(struct mystr_list* p_list,
+void vsf_ls_populate_dir_list(const char* session_user,	// James
+							  struct mystr_list* p_list,
                               struct mystr_list* p_subdir_list,
                               struct vsf_sysutil_dir* p_dir,
                               const struct mystr* p_base_dir_str,
@@ -35,14 +52,11 @@ void vsf_ls_populate_dir_list(struct mystr_list* p_list,
  * PARAMETERS
  * p_filename_str  - the filename to match
  * p_filter_str    - the filter to match against
- * iters           - pointer to a zero-seeded int which prevents the match
- *                   loop from running an excessive number of times
  * RETURNS
  * Returns 1 if there is a match, 0 otherwise.
  */
 int vsf_filename_passes_filter(const struct mystr* p_filename_str,
-                               const struct mystr* p_filter_str,
-                               unsigned int* iters);
+                               const struct mystr* p_filter_str);
 
 #endif /* VSF_LS_H */
 

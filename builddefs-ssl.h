@@ -14,11 +14,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  */
-#ifndef VSF_AIX_BOGONS_H
-#define VSF_AIX_BOGONS_H
+#ifndef VSF_BUILDDEFS_H
+#define VSF_BUILDDEFS_H
 
-/* Need dirfd() */
-#include "dirfd_extras.h"
+#undef VSF_BUILD_TCPWRAPPERS
+#define VSF_BUILD_PAM
+#define VSF_BUILD_SSL
 
-#endif /* VSF_AIX_BOGONS_H */
+#endif /* VSF_BUILDDEFS_H */
 

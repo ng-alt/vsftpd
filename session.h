@@ -1,5 +1,23 @@
+/*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
 #ifndef VSF_SESSION_H
 #define VSF_SESSION_H
+
+#include <stdio.h>
 
 #ifndef VSFTP_STR_H
 #include "str.h"
@@ -21,8 +39,6 @@ struct vsf_session
   struct vsf_sysutil_sockaddr* p_local_addr;
   struct vsf_sysutil_sockaddr* p_remote_addr;
   char* p_control_line_buf;
-  int idle_timeout;
-  int data_timeout;
 
   /* Details of the data connection */
   int pasv_listen_fd;
@@ -35,7 +51,6 @@ struct vsf_session
 
   /* Details of the login */
   int is_anonymous;
-  int is_guest;
   struct mystr user_str;
   struct mystr anon_pass_str;
 
@@ -45,10 +60,6 @@ struct vsf_session
   struct mystr rnfr_filename_str;
   int abor_received;
   int epsv_all;
-
-  /* HTTP hacks */
-  int is_http;
-  struct mystr http_get_arg;
 
   /* Details of FTP session state */
   struct mystr_list* p_visited_dir_list;
@@ -78,6 +89,8 @@ struct vsf_session
   /* Buffers */
   struct mystr ftp_cmd_str;
   struct mystr ftp_arg_str;
+  int layer;
+  struct mystr full_path;
 
   /* Parent<->child comms channel */
   int parent_fd;
@@ -94,12 +107,11 @@ struct vsf_session
   void* p_ssl_ctx;
   void* p_control_ssl;
   void* p_data_ssl;
-  struct mystr control_cert_digest;
   int ssl_slave_active;
   int ssl_slave_fd;
   int ssl_consumer_fd;
-  unsigned int login_fails;
+  
+  int write_enable;
 };
-
 #endif /* VSF_SESSION_H */
 

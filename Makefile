@@ -1,16 +1,39 @@
+include ../common.mak
+
 # Makefile for systems with GNU tools
-CC 	=	gcc
-INSTALL	=	install
+
+#CC 	=	gcc
+#INSTALL	=	install
 IFLAGS  = -idirafter dummyinc
 #CFLAGS = -g
-CFLAGS	=	-O2 -fPIE -fstack-protector --param=ssp-buffer-size=4 \
-	-Wall -W -Wshadow -Werror -Wformat-security \
-	-D_FORTIFY_SOURCE=2 \
-	#-pedantic -Wconversion
+CFLAGS	+= -O2 -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -W -Wshadow #-pedantic -Werror -Wconversion
+CFLAGS  += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE=1 -D_LARGEFILE64_SOURCE=1 -D_LARGE_FILES=1
+LDFLAGS = -ffunction-sections -fdata-sections -Wl,--gc-sections
 
-LIBS	=	`./vsf_findlibs.sh`
-LINK	=	-Wl,-s
-LDFLAGS	=	-fPIE -pie -Wl,-z,relro -Wl,-z,now
+#LIBS	=	`./vsf_findlibs.sh`
+#LINK	=	-Wl,-s
+LIBS	=	-lcrypt -lnsl
+LINK	=	
+
+CFLAGS	+=	-I../shared
+ifeq ($(RTCONFIG_FTP_SSL),y)
+LIBS	=	-lnsl
+OPENSSLDIR = ../openssl
+OPENSSLINC = $(OPENSSLDIR)/include
+LIBS	+=	-L$(OPENSSLDIR)/ -lssl -lcrypto
+CFLAGS	+=	-I$(OPENSSLINC)
+endif
+
+CFLAGS  += 	-I$(SRCBASE)/include -I$(TOP)/shared -I$(TOP)/libdisk
+LDFLAGS  +=	-L$(TOP)/nvram${BCMEX} -lnvram -L$(TOP)/shared -lshared -L$(TOP)/libdisk -ldisk
+ifeq ($(RTCONFIG_BCMARM),y)
+CFLAGS += -I$(SRCBASE)/common/include
+LDFLAGS += -lgcc_s
+endif
+
+ifeq ($(RTCONFIG_QTN),y)
+LDFLAGS += -L$(TOP)/libqcsapi_client -lqcsapi_client
+endif
 
 OBJS	=	main.o utility.o prelogin.o ftpcmdio.o postlogin.o privsock.o \
 		tunables.o ftpdataio.o secbuf.o ls.o \
@@ -18,15 +41,14 @@ OBJS	=	main.o utility.o prelogin.o ftpcmdio.o postlogin.o privsock.o \
     banner.o filestr.o parseconf.o secutil.o \
     ascii.o oneprocess.o twoprocess.o privops.o standalone.o hash.o \
     tcpwrap.o ipaddrparse.o access.o features.o readwrite.o opts.o \
-    ssl.o sslslave.o ptracesandbox.o ftppolicy.o sysutil.o sysdeputil.o \
-    seccompsandbox.o
+    ssl.o sysutil.o sysdeputil.o
 
 
 .c.o:
 	$(CC) -c $*.c $(CFLAGS) $(IFLAGS)
 
 vsftpd: $(OBJS) 
-	$(CC) -o vsftpd $(OBJS) $(LINK) $(LDFLAGS) $(LIBS)
+	$(CC) -o vsftpd $(OBJS) $(LINK) $(LIBS) $(LDFLAGS)
 
 install:
 	if [ -x /usr/local/sbin ]; then \

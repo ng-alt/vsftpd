@@ -1,4 +1,20 @@
 /*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+/*
  * Part of Very Secure FTPd
  * Licence: GPL v2
  * Author: Chris Evans
@@ -9,6 +25,8 @@
  * the buffers, you can't handle them in a screwed way. Or so goes the
  * theory, anyway...
  */
+
+#include <string.h>
 
 /* Anti-lamer measures deployed, sir! */
 #define PRIVATE_HANDS_OFF_p_buf p_buf
@@ -42,12 +60,7 @@ private_str_alloc_memchunk(struct mystr* p_str, const char* p_src,
                            unsigned int len)
 {
   /* Make sure this will fit in the buffer */
-  unsigned int buf_needed;
-  if (len + 1 < len)
-  {
-    bug("integer overflow");
-  }
-  buf_needed = len + 1;
+  unsigned int buf_needed = len + 1;
   if (buf_needed > p_str->alloc_bytes)
   {
     str_free(p_str);
@@ -63,17 +76,7 @@ void
 private_str_append_memchunk(struct mystr* p_str, const char* p_src,
                             unsigned int len)
 {
-  unsigned int buf_needed;
-  if (len + p_str->len < len)
-  {
-    bug("integer overflow");
-  }
-  buf_needed = len + p_str->len;
-  if (buf_needed + 1 < buf_needed)
-  {
-    bug("integer overflow");
-  }
-  buf_needed++;
+  unsigned int buf_needed = p_str->len + len + 1;
   if (buf_needed > p_str->alloc_bytes)
   {
     p_str->p_buf = vsf_sysutil_realloc(p_str->p_buf, buf_needed);
@@ -113,10 +116,6 @@ str_alloc_alt_term(struct mystr* p_str, const char* p_src, char term)
   {
     p_search++;
     len++;
-    if (len == 0)
-    {
-      bug("integer overflow");
-    }
   }
   private_str_alloc_memchunk(p_str, p_src, len);
 }
@@ -169,10 +168,6 @@ str_reserve(struct mystr* p_str, unsigned int res_len)
 {
   /* Reserve space for the trailing zero as well. */
   res_len++;
-  if (res_len == 0)
-  {
-    bug("integer overflow");
-  }
   if (res_len > p_str->alloc_bytes)
   {
     p_str->p_buf = vsf_sysutil_realloc(p_str->p_buf, res_len);
@@ -224,6 +219,7 @@ str_equal_internal(const char* p_buf1, unsigned int buf1_len,
   {
     minlen = buf2_len;
   }
+	//printf("   [str_equal] [%s][%s](%d)(%d)(%d)\n", p_buf1, p_buf2, buf1_len, buf2_len, minlen);	// tmp test
   retval = vsf_sysutil_memcmp(p_buf1, p_buf2, minlen);
   if (retval != 0 || buf1_len == buf2_len)
   {
@@ -289,7 +285,7 @@ str_upper(struct mystr* p_str)
   unsigned int i;
   for (i=0; i < p_str->len; i++)
   {
-    p_str->p_buf[i] = (char) vsf_sysutil_toupper(p_str->p_buf[i]);
+    p_str->p_buf[i] = vsf_sysutil_toupper(p_str->p_buf[i]);
   }
 }
 
@@ -458,9 +454,9 @@ str_locate_chars(const struct mystr* p_str, const char* p_chars)
   struct str_locate_result retval;
   unsigned int num_chars = vsf_sysutil_strlen(p_chars);
   unsigned int i = 0;
+  
+  memset(&retval, 0, sizeof(struct str_locate_result));
   retval.found = 0;
-  retval.char_found = 0;
-  retval.index = 0;
   for (; i < p_str->len; ++i)
   {
     unsigned int j = 0;
@@ -486,7 +482,6 @@ str_locate_text(const struct mystr* p_str, const char* p_text)
   unsigned int i;
   unsigned int text_len = vsf_sysutil_strlen(p_text);
   retval.found = 0;
-  retval.char_found = 0;
   retval.index = 0;
   if (text_len == 0 || text_len > p_str->len)
   {
@@ -513,7 +508,6 @@ str_locate_text_reverse(const struct mystr* p_str, const char* p_text)
   unsigned int i;
   unsigned int text_len = vsf_sysutil_strlen(p_text);
   retval.found = 0;
-  retval.char_found = 0;
   retval.index = 0;
   if (text_len == 0 || text_len > p_str->len)
   {
@@ -597,20 +591,6 @@ str_contains_space(const struct mystr* p_str)
 }
 
 int
-str_all_space(const struct mystr* p_str)
-{
-  unsigned int i;
-  for (i=0; i < p_str->len; i++)
-  {
-    if (!vsf_sysutil_isspace(p_str->p_buf[i]))
-    {
-      return 0;
-    }
-  }
-  return 1;
-}
-
-int
 str_contains_unprintable(const struct mystr* p_str)
 {
   unsigned int i;
@@ -663,20 +643,12 @@ str_getline(const struct mystr* p_str, struct mystr* p_line_str,
   while (curr_pos < buf_len && p_buf[curr_pos] != '\n')
   {
     curr_pos++;
-    if (curr_pos == 0)
-    {
-      bug("integer overflow");
-    }
   }
   out_len = curr_pos - start_pos;
   /* If we ended on a \n - skip it */
   if (curr_pos < buf_len && p_buf[curr_pos] == '\n')
   {
     curr_pos++;
-    if (curr_pos == 0)
-    {
-      bug("integer overflow");
-    }
   }
   private_str_alloc_memchunk(p_line_str, p_buf + start_pos, out_len);
   *p_pos = curr_pos;

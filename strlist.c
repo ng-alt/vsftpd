@@ -1,4 +1,20 @@
 /*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+/*
  * Part of Very Secure FTPd
  * Licence: GPL v2
  * Author: Chris Evans
@@ -22,8 +38,6 @@ struct mystr_list_node
 };
 
 /* File locals */
-static const unsigned int kMaxStrlist = 10 * 1000 * 1000;
-
 static struct mystr s_null_str;
 
 static int sort_compare_func(const void* p1, const void* p2);
@@ -48,7 +62,7 @@ str_list_free(struct mystr_list* p_list)
   }
 }
 
-unsigned int
+int
 str_list_get_length(const struct mystr_list* p_list)
 {
   return p_list->list_len;
@@ -80,19 +94,15 @@ str_list_add(struct mystr_list* p_list, const struct mystr* p_str,
     if (p_list->alloc_len == 0)
     {
       p_list->alloc_len = 32;
-      p_list->p_nodes = vsf_sysutil_malloc(
-          p_list->alloc_len * (unsigned int) sizeof(struct mystr_list_node));
+      p_list->p_nodes = vsf_sysutil_malloc(p_list->alloc_len *
+                                           sizeof(struct mystr_list_node));
     }
     else
     {
       p_list->alloc_len *= 2;
-      if (p_list->alloc_len > kMaxStrlist)
-      {
-        die("excessive strlist");
-      }
-      p_list->p_nodes = vsf_sysutil_realloc(
-          p_list->p_nodes,
-          p_list->alloc_len * (unsigned int) sizeof(struct mystr_list_node));
+      p_list->p_nodes = vsf_sysutil_realloc(p_list->p_nodes,
+                                            p_list->alloc_len *
+                                            sizeof(struct mystr_list_node));
     }
   }
   p_node = &p_list->p_nodes[p_list->list_len];

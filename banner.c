@@ -1,4 +1,20 @@
 /*
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ * MA 02111-1307 USA
+ */
+/*
  * Part of Very Secure FTPd
  * Licence: GPL v2
  * Author: Chris Evans
@@ -53,11 +69,8 @@ vsf_banner_dir_changed(struct vsf_session* p_sess, int ftpcode)
      */
     {
       struct mystr msg_file_str = INIT_MYSTR;
-      if (tunable_message_file)
-      {
-        (void) str_fileread(&msg_file_str, tunable_message_file,
-                            VSFTP_MAX_MSGFILE_SIZE);
-      }
+      (void) str_fileread(&msg_file_str, tunable_message_file,
+                          VSFTP_MAX_MSGFILE_SIZE);
       vsf_banner_write(p_sess, &msg_file_str, ftpcode);
       str_free(&msg_file_str);
     }
